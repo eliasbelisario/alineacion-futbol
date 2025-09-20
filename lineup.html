@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Alineación con edición manual de imagen</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
+      font-family: 'Segoe UI', sans-serif;
+      background: #000;
+      overflow: hidden;
+    }
+
+    .campo {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: url('https://i.imgur.com/dDDXPfA.jpg') center center / cover no-repeat;
+    }
+
+    .ficha {
+      position: absolute;
+      width: 112px;
+      height: 142px;
+      background: url('https://i.imgur.com/o5DvUmn.jpg') center center / cover no-repeat;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      cursor: move;
+      user-select: none;
+      box-sizing: border-box;
+      overflow: hidden;
+      padding-top: 12px;
+    }
+
+    .iconos {
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+      margin-bottom: 4px;
+      font-size: 14px;
+      color: white;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .ficha:hover .iconos {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .iconos span {
+      background: #222;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 0 3px #000;
+    }
+
+    .ficha img {
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+      border-radius: 50%;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+      margin-top: 4px;
+      margin-bottom: 4px;
+    }
+
+    .nombre {
+      font-size: 12px;
+      font-weight: bold;
+      color: white;
+      text-align: center;
+      line-height: 1.2;
+      text-shadow: 1px 1px 2px #000;
+      padding: 0 4px;
+      word-break: break-word;
+    }
+
+    .boton-agregar {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: #135628;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 56px;
+      height: 56px;
+      font-size: 36px;
+      cursor: pointer;
+      z-index: 10;
+    }
+
+    .centro {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="campo" id="campo">
+    <button class="boton-agregar" onclick="agregarFicha()">+</button>
+  </div>
+
+  <script>
+    const campo = document.getElementById('campo');
+
+    function agregarFicha(nombre = "Jugador", imagen = "https://via.placeholder.com/64", x = "50%", y = "50%") {
+      const ficha = document.createElement('div');
+      ficha.className = 'ficha';
+      ficha.style.left = x;
+      ficha.style.top = y;
+
+      ficha.innerHTML = `
+        <div class="iconos">
+          <span onclick="eliminarFicha(this)">✖</span>
+          <span title="Mover">⛶</span>
+          <span onclick="agregarFicha()">➕</span>
+        </div>
+        <div class="centro" onclick="editarFicha(this.parentElement)">
+          <img src="${imagen}" alt="Jugador">
+          <div class="nombre">${nombre}</div>
+        </div>
+      `;
+
+      habilitarDrag(ficha);
+      campo.appendChild(ficha);
+      guardarFichas();
+    }
+
+    function eliminarFicha(el) {
+      el.closest('.ficha').remove();
+      guardarFichas();
+    }
+
+    async function editarFicha(ficha) {
+      const nombre = prompt("Nombre del jugador:");
+      if (nombre) {
+        ficha.querySelector('.nombre').textContent = nombre;
+      }
+
+      const actualizar = confirm("¿Deseas actualizar la imagen manualmente?");
+      if (!actualizar) return;
+
+      const imagen = prompt("Pega el enlace directo de la imagen (.jpg, .png, .webp):");
+      if (!imagen || !imagen.match(/\.(jpg|jpeg|png|webp)$/i)) {
+        alert("Enlace inválido. Debe terminar en .jpg, .png, etc.");
+        return;
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        ficha.querySelector('img').src = imagen;
+        guardarFichas();
+      };
+      img.onerror = () => {
+        alert("No se pudo cargar la imagen. Verifica el enlace.");
+      };
+      img.src = imagen;
+    }
+
+    function habilitarDrag(el) {
+      let offsetX, offsetY, isDragging = false;
+
+      el.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.iconos')) return;
+        isDragging = true;
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        el.style.left = `${e.pageX - offsetX}px`;
+        el.style.top = `${e.pageY - offsetY}px`;
+      });
+
+      document.addEventListener('mouseup', () => {
+        isDragging = false;
+        guardarFichas();
+      });
+    }
+
+    function guardarFichas() {
+      const fichas = [...document.querySelectorAll('.ficha')].map(f => ({
+        nombre: f.querySelector('.nombre').textContent,
+        imagen: f.querySelector('img').src,
+        x: f.style.left,
+        y: f.style.top
+      }));
+      localStorage.setItem('alineacion', JSON.stringify(fichas));
+    }
+
+    function cargarFichas() {
+      const data = localStorage.getItem('alineacion');
+      if (!data) return;
+      JSON.parse(data).forEach(f => agregarFicha(f.nombre, f.imagen, f.x, f.y));
+    }
+
+    cargarFichas();
+  </script>
+</body>
+</html>
