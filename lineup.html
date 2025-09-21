@@ -87,19 +87,34 @@
       word-break: break-word;
     }
 
-    .boton-agregar {
+    .boton-icono {
       position: absolute;
       top: 20px;
-      left: 20px;
-      background: #135628;
-      color: white;
+      background: transparent;
       border: none;
-      border-radius: 50%;
+      padding: 0;
       width: 56px;
       height: 56px;
-      font-size: 36px;
       cursor: pointer;
       z-index: 10;
+    }
+
+    .boton-icono img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .boton-agregar {
+      left: 20px;
+    }
+
+    .boton-deshacer {
+      left: 90px;
+    }
+
+    .boton-rehacer {
+      left: 160px;
     }
 
     .centro {
@@ -114,11 +129,21 @@
 </head>
 <body>
   <div class="campo" id="campo">
-    <button class="boton-agregar" onclick="agregarFicha()">+</button>
+    <button class="boton-icono boton-agregar" onclick="agregarFicha()" title="Agregar">
+      <img src="https://github.com/eliasbelisario/alineacion-futbol/blob/d6981d044d57adccee0acc7b1a9027ccbae7fc1a/images/LINEUP-03.png?raw=true" alt="Agregar">
+    </button>
+    <button class="boton-icono boton-deshacer" onclick="deshacer()" title="Deshacer">
+      <img src="https://github.com/eliasbelisario/alineacion-futbol/blob/d6981d044d57adccee0acc7b1a9027ccbae7fc1a/images/LINEUP-04.png?raw=true" alt="Deshacer">
+    </button>
+    <button class="boton-icono boton-rehacer" onclick="rehacer()" title="Rehacer">
+      <img src="https://github.com/eliasbelisario/alineacion-futbol/blob/d6981d044d57adccee0acc7b1a9027ccbae7fc1a/images/LINEUP-05.png?raw=true" alt="Rehacer">
+    </button>
   </div>
 
   <script>
     const campo = document.getElementById('campo');
+    let historial = [];
+    let indiceHistorial = -1;
 
     function agregarFicha(nombre = "Jugador", imagen = "https://via.placeholder.com/64", x = "50%", y = "50%") {
       const ficha = document.createElement('div');
@@ -191,8 +216,10 @@
       });
 
       document.addEventListener('mouseup', () => {
-        isDragging = false;
-        guardarFichas();
+        if (isDragging) {
+          isDragging = false;
+          guardarFichas();
+        }
       });
     }
 
@@ -204,12 +231,40 @@
         y: f.style.top
       }));
       localStorage.setItem('alineacion', JSON.stringify(fichas));
+
+      const estadoActual = JSON.stringify(fichas);
+      if (historial[indiceHistorial] !== estadoActual) {
+        historial = historial.slice(0, indiceHistorial + 1);
+        historial.push(estadoActual);
+        indiceHistorial++;
+      }
+    }
+
+    function aplicarEstado(json) {
+      campo.querySelectorAll('.ficha').forEach(f => f.remove());
+      JSON.parse(json).forEach(f => agregarFicha(f.nombre, f.imagen, f.x, f.y));
+    }
+
+    function deshacer() {
+      if (indiceHistorial > 0) {
+        indiceHistorial--;
+        aplicarEstado(historial[indiceHistorial]);
+      }
+    }
+
+    function rehacer() {
+      if (indiceHistorial < historial.length - 1) {
+        indiceHistorial++;
+        aplicarEstado(historial[indiceHistorial]);
+      }
     }
 
     function cargarFichas() {
       const data = localStorage.getItem('alineacion');
       if (!data) return;
       JSON.parse(data).forEach(f => agregarFicha(f.nombre, f.imagen, f.x, f.y));
+      historial.push(data);
+      indiceHistorial = 0;
     }
 
     cargarFichas();
